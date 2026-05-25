@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>HGA Grade Calculator v2</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ===== BASE ===== */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Thai', sans-serif;
+  background: #f1f5f9;
+  color: #1e293b;
+  font-size: 16px;
+  line-height: 1.6;
+  padding-top: 70px; /* JS will override precisely */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ===== STICKY HEADER ===== */
+#header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: #1e3a5f;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  padding-top: constant(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top);
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  gap: 10px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.header-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ── Device badge ── */
+.device-badge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.device-badge.iphone { background: #3b82f6; color: #fff; }
+.device-badge.ipad   { background: #8b5cf6; color: #fff; }
+.device-badge.pc     { background: #16a34a; color: #fff; }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+}
+
+.header-score {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.75);
+  white-space: nowrap;
+}
+.header-score strong { color: #fff; font-size: 0.92rem; }
+
+.grade-pill {
+  background: #fff;
+  color: #1e3a5f;
+  font-weight: 800;
+  font-size: 1.05rem;
+  padding: 3px 12px;
+  border-radius: 999px;
+  min-width: 48px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.progress-track {
+  height: 5px;
+  background: rgba(255,255,255,0.12);
+}
+#progress-fill {
+  height: 100%;
+  width: 0%;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+/* ===== OUTER WRAPPER ===== */
+.outer {
+  padding: 14px 10px 52px;
+}
+
+/* ===== APP WRAPPER — single column on iPhone ===== */
+.app-wrapper {
+  display: block;
+}
+
+/* ===== INPUT PANEL — single column on iPhone ===== */
+.input-panel {
+  display: block;
+}
+
+/* ===== RESULT PANEL ===== */
+.result-panel { /* flows normally below input-panel on mobile */ }
+
+/* ===== CARDS ===== */
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 13px 13px;
+  margin-bottom: 11px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  border-left: 5px solid transparent;
+}
+
+.card.group-exam  { border-left-color: #3b82f6; }
+.card.group-sdl   { border-left-color: #8b5cf6; }
+.card.group-lab   { border-left-color: #16a34a; }
+.card.group-form  { border-left-color: #f59e0b; }
+
+.card-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 11px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.card.group-exam  .card-title { color: #2563eb; }
+.card.group-sdl   .card-title { color: #7c3aed; }
+.card.group-lab   .card-title { color: #15803d; }
+.card.group-form  .card-title { color: #d97706; }
+
+/* ===== ROWS ===== */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid #f8fafc;
+}
+.row:last-child { border-bottom: none; }
+
+.row-label {
+  flex: 1;
+  font-size: 0.91rem;
+  color: #334155;
+  min-width: 0;
+}
+.row-label .pct {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-left: 3px;
+}
+
+/* ===== SELECTS ===== */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2394a3b8' d='M5 7L0 2h10z'/%3E%3C/svg%3E") no-repeat right 9px center;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 9px 28px 9px 10px;
+  font-size: 16px; /* iOS: must be >= 16px to prevent auto-zoom */
+  color: #334155;
+  cursor: pointer;
+  min-width: 68px;
+  min-height: 44px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+
+.status-select { min-width: 0; flex: 1; font-size: 16px; }
+
+/* ===== ATTENDANCE BUTTONS ===== */
+.toggle-wrap { display: flex; gap: 8px; }
+
+.toggle-btn {
+  padding: 9px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: #f8fafc;
+  color: #94a3b8;
+  transition: all 0.15s;
+  min-height: 44px;
+  min-width: 50px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+.toggle-btn.s-on { border-color: #16a34a; background: #f0fdf4; color: #16a34a; }
+.toggle-btn.u-on { border-color: #dc2626; background: #fef2f2; color: #dc2626; }
+
+.att-note { font-size: 0.8rem; flex: 1; }
+.att-note.s { color: #16a34a; }
+.att-note.u { color: #dc2626; font-weight: 600; }
+
+/* ===== DISSECTION WARNING ===== */
+.dis-warn {
+  display: none;
+  margin-top: 9px;
+  background: #fefce8;
+  border: 1px solid #fde047;
+  border-radius: 8px;
+  padding: 8px 11px;
+  font-size: 0.83rem;
+  color: #854d0e;
+}
+.dis-warn.on { display: block; }
+.struck { text-decoration: line-through; color: #94a3b8; margin-right: 3px; }
+.after-val { font-weight: 700; color: #dc2626; }
+
+/* ===== FORMATIVE ROWS ===== */
+.fa-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 0;
+  border-bottom: 1px solid #f8fafc;
+  flex-wrap: wrap;
+}
+.fa-row:last-child { border-bottom: none; }
+
+.fa-label {
+  min-width: 60px;
+  font-size: 0.91rem;
+  color: #334155;
+}
+
+/* ===== SUMMARY CARD ===== */
+.summary-card {
+  background: #1e3a5f;
+  border-radius: 12px;
+  padding: 18px 18px;
+  margin-bottom: 11px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+.summary-card .card-title {
+  color: rgba(255,255,255,0.55);
+  border-bottom-color: rgba(255,255,255,0.1);
+  font-size: 0.73rem;
+  margin-bottom: 0;
+  padding-bottom: 8px;
+}
+
+.gpa-display {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 0 14px;
+}
+.gpa-value {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.gpa-max {
+  font-size: 1.1rem;
+  color: rgba(255,255,255,0.5);
+  font-weight: 500;
+}
+.gpa-grade {
+  display: inline-block;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 2px 11px;
+  border-radius: 999px;
+  margin-left: 4px;
+}
+
+.sum-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.86rem;
+  padding: 4px 0;
+  color: rgba(255,255,255,0.7);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.sum-row:last-of-type { border-bottom: none; }
+
+.sum-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: #fff;
+  padding: 9px 0 0;
+  margin-top: 7px;
+  border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+/* ===== GRADE TABLE CARD ===== */
+.grade-table-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 13px 13px;
+  margin-bottom: 11px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.grade-table-card .gtc-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  margin-bottom: 11px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.grade-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.87rem;
+}
+.grade-table th {
+  font-size: 0.69rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+}
+.grade-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #f8fafc;
+  color: #475569;
+}
+.grade-table tbody tr:last-child td { border-bottom: none; }
+.grade-table tbody tr.hl { background: #eff6ff; }
+.grade-table tbody tr.hl td { color: #1d4ed8; font-weight: 700; }
+.grade-table tbody tr.hl td:first-child { font-size: 0.97rem; font-weight: 800; }
+
+.g-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* ===== RESET ===== */
+.reset-wrap { text-align: center; margin: 4px 0 8px; }
+.reset-btn {
+  width: 100%;
+  padding: 13px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.93rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-height: 48px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.reset-btn:active { background: #e2e8f0; color: #334155; }
+
+
+/* ════════════════════════════════════════════════
+   IPAD  768px – 1199px
+   ════════════════════════════════════════════════ */
+@media (min-width: 768px) and (max-width: 1199px) {
+
+  .outer { padding: 20px 22px 56px; max-width: 960px; margin: 0 auto; }
+
+  .header-top { padding: 12px 22px; }
+  .header-title { font-size: 1rem; }
+  .header-score { font-size: 0.85rem; }
+  .grade-pill { font-size: 1.15rem; padding: 4px 14px; min-width: 54px; }
+
+  /* 2-column grid for input cards */
+  .input-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  .input-panel .card { margin-bottom: 0; }
+
+  /* Lab Attendance spans full width */
+  .card.lab-attendance { grid-column: 1 / -1; }
+  /* Both Formative cards span full width */
+  .card.group-form { grid-column: 1 / -1; }
+
+  .card { padding: 17px 18px; }
+
+  .status-select { min-width: 200px; flex: none; }
+  select { min-height: 46px; }
+
+  .gpa-value { font-size: 3.1rem; }
+  .fa-label { min-width: 70px; }
+}
+
+
+/* ════════════════════════════════════════════════
+   PC  ≥ 1200px
+   ════════════════════════════════════════════════ */
+@media (min-width: 1200px) {
+
+  .outer { padding: 24px 32px 56px; max-width: 1500px; margin: 0 auto; }
+
+  .header-top { padding: 13px 32px; }
+  .header-title { font-size: 1.1rem; }
+  .header-score { font-size: 0.9rem; }
+  .grade-pill { font-size: 1.25rem; padding: 5px 18px; min-width: 60px; }
+
+  /* Sidebar layout: inputs left, result right */
+  .app-wrapper {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+
+  /* Left: 2-column grid of input cards */
+  .input-panel {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  .input-panel .card { margin-bottom: 0; }
+
+  .card.lab-attendance { grid-column: 1 / -1; }
+  .card.group-form     { grid-column: 1 / -1; }
+
+  /* Right: sticky result panel */
+  .result-panel {
+    width: 370px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 84px; /* updated by JS */
+  }
+
+  .card { padding: 19px 21px; }
+
+  select:hover { border-color: #94a3b8; }
+  select { min-height: 44px; }
+  .status-select { min-width: 220px; flex: none; }
+
+  .gpa-value { font-size: 3.4rem; }
+  .fa-label { min-width: 75px; }
+
+  .reset-btn { width: 100%; }
+  .reset-btn:hover { background: #e2e8f0; color: #334155; }
+}
+
+
+/* ════════════════════════════════════════════════
+   IPHONE  ≤ 390px (small models)
+   ════════════════════════════════════════════════ */
+@media (max-width: 390px) {
+  .header-title { font-size: 0.82rem; }
+  .header-score { font-size: 0.72rem; }
+  /* keep >= 16px — iOS auto-zoom prevention */
+  .status-select { font-size: 16px; }
+  select { font-size: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div id="header">
+  <div class="header-top">
+    <div class="header-left">
+      <div class="header-title">HGA Grade Calculator</div>
+      <span class="device-badge" id="device-badge">-</span>
+    </div>
+    <div class="header-right">
+      <div class="header-score">GPA:&nbsp;<strong id="bar-gpa">-</strong>&nbsp;/ 4.0</div>
+      <div class="grade-pill" id="bar-grade">-</div>
+    </div>
+  </div>
+  <div class="progress-track">
+    <div id="progress-fill"></div>
+  </div>
+</div>
+
+<div class="outer">
+  <div class="app-wrapper">
+
+    <!-- ══════════════════════════════════════
+         INPUT PANEL
+    ═══════════════════════════════════════ -->
+    <div class="input-panel" id="input-panel">
+
+      <!-- MCQ -->
+      <div class="card group-exam">
+        <div class="card-title">MCQ (รวม 63%)</div>
+
+        <div class="row">
+          <div class="row-label">MCQ 1 <span class="pct">(13.5%)</span></div>
+          <select id="mcq1">
+            <option value=""></option>
+            <option value="4">A</option><option value="3.5">B+</option><option value="3">B</option>
+            <option value="2.5">C+</option><option value="2">C</option><option value="1.5">D+</option>
+            <option value="1">D</option><option value="0">F</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="row-label">MCQ 2 <span class="pct">(13.5%)</span></div>
+          <select id="mcq2">
+            <option value=""></option>
+            <option value="4">A</option><option value="3.5">B+</option><option value="3">B</option>
+            <option value="2.5">C+</option><option value="2">C</option><option value="1.5">D+</option>
+            <option value="1">D</option><option value="0">F</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="row-label">MCQ 3 <span class="pct">(12%)</span></div>
+          <select id="mcq3">
+            <option value=""></option>
+            <option value="4">A</option><option value="3.5">B+</option><option value="3">B</option>
+            <option value="2.5">C+</option><option value="2">C</option><option value="1.5">D+</option>
+            <option value="1">D</option><option value="0">F</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="row-label">MCQ 4 <span class="pct">(12%)</span></div>
+          <select id="mcq4">
+            <option value=""></option>
+            <option value="4">A</option><option value="3.5">B+</option><option value="3">B</option>
+            <option value="2.5">C+</option><option value="2">C</option><option value="1.5">D+</option>
+            <option value="1">D</option><option value="0">F</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="row-label">MCQ 5 <span class="pct">(12%)</span></div>
+          <select id="mcq5">
+            <option value=""></option>
+            <option value="4">A</option><option value="3.5">B+</option><option value="3">B</option>
+            <option value="2.5">C+</option><option value="2">C</option><option value="1.5">D+</option>
+            <option value="1">D</option><option value="0">F</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- TSE -->
+      <div class="card group-exam">
+        <div class="card-title">TSE (รวม 22%)</div>
+
+        <div class="row">
+          <div class="row-label">TSE 1 <span class="pct">(4.2%)</span></div>
+          <select id="tse1">
+            <option value=""></option>
+            <option value="4">A</option><option value="3.5">B+</option><option value="3">B</option>
+            <option value="2.5">C+</option><option value="2">C</option><option value="1.5">D+</option>
+            <option value="1">D</option><option value="0">F</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="row-label">TSE 2 <span class="pct">(4.2%)</span></div>
+          <select id="tse2">
+            <option value=""></option>
+            <option value="4">A</option><option value="3.5">B+</option><option value="3">B</option>
+            <option value="2.5">C+</option><option value="2">C</option><option value="1.5">D+</option>
+            <option value="1">D</option><option value="0">F</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="row-label">TSE 3 <span class="pct">(4.2%)</span></div>
+          <select id="tse3">
+            <option value=""></option>
+            <option value="4">A</option><option value="3.5">B+</option><option value="3">B</option>
+            <option value="2.5">C+</option><option value="2">C</option><option value="1.5">D+</option>
+            <option value="1">D</option><option value="0">F</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="row-label">TSE 4 <span class="pct">(4.2%)</span></div>
+          <select id="tse4">
+            <option value=""></option>
+            <option value="4">A</option><option value="3.5">B+</option><option value="3">B</option>
+            <option value="2.5">C+</option><option value="2">C</option><option value="1.5">D+</option>
+            <option value="1">D</option><option value="0">F</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="row-label">TSE 5 <span class="pct">(5.2%)</span></div>
+          <select id="tse5">
+            <option value=""></option>
+            <option value="4">A</option><option value="3.5">B+</option><option value="3">B</option>
+            <option value="2.5">C+</option><option value="2">C</option><option value="1.5">D+</option>
+            <option value="1">D</option><option value="0">F</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- SDL -->
+      <div class="card group-sdl">
+        <div class="card-title">SDL (2%)</div>
+        <div class="row">
+          <div class="row-label">Joint of Limb <span class="pct">(2%)</span></div>
+          <select id="sdl">
+            <option value=""></option>
+            <option value="4">A</option>
+            <option value="3">B</option>
+            <option value="2">C</option>
+            <option value="0">F</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Lab Dissection -->
+      <div class="card group-lab">
+        <div class="card-title">Lab Dissection Completion (10%)</div>
+        <div class="row">
+          <div class="row-label">เกรด <span class="pct">(10%)</span></div>
+          <select id="lab-dis">
+            <option value=""></option>
+            <option value="4">A</option>
+            <option value="3">B</option>
+            <option value="2">C</option>
+            <option value="0">F</option>
+          </select>
+        </div>
+        <div class="dis-warn" id="dis-warn">
+          Lab Dissection: <span class="struck" id="dis-before"></span><span class="after-val" id="dis-after"></span> (หัก 25% จาก U)
+        </div>
+      </div>
+
+      <!-- Lab Attendance — full width on iPad & PC -->
+      <div class="card group-lab lab-attendance">
+        <div class="card-title">Lab Attendance</div>
+        <div class="row">
+          <div class="row-label">ผลการเข้าแลบ</div>
+          <div class="toggle-wrap">
+            <button class="toggle-btn" id="btn-s">S</button>
+            <button class="toggle-btn" id="btn-u">U</button>
+          </div>
+          <span class="att-note" id="att-note"></span>
+        </div>
+      </div>
+
+      <!-- Formative Assessment — full width on iPad & PC -->
+      <div class="card group-form">
+        <div class="card-title">Formative Assessment (รวม 2%)</div>
+
+        <div class="fa-row">
+          <div class="fa-label">ครั้งที่ 1</div>
+          <select class="status-select" id="fa1-status">
+            <option value=""></option>
+            <option value="1">เข้าทำตอบครบ (1%)</option>
+            <option value="0.5">เข้าทำช้า (0.5%)</option>
+            <option value="0">ไม่เข้าทำ (0%)</option>
+          </select>
+          <select id="fa1-grade">
+            <option value=""></option>
+            <option value="4">A</option>
+            <option value="0">F</option>
+          </select>
+        </div>
+        <div class="fa-row">
+          <div class="fa-label">ครั้งที่ 2</div>
+          <select class="status-select" id="fa2-status">
+            <option value=""></option>
+            <option value="1">เข้าทำตอบครบ (1%)</option>
+            <option value="0.5">เข้าทำช้า (0.5%)</option>
+            <option value="0">ไม่เข้าทำ (0%)</option>
+          </select>
+          <select id="fa2-grade">
+            <option value=""></option>
+            <option value="4">A</option>
+            <option value="0">F</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Formative Orientation — full width on iPad & PC -->
+      <div class="card group-form">
+        <div class="card-title">Formative (Orientation) (1%)</div>
+        <div class="row">
+          <div class="row-label">เกรด <span class="pct">(1%)</span></div>
+          <select id="fo-grade">
+            <option value=""></option>
+            <option value="4">A</option>
+            <option value="0">F</option>
+          </select>
+        </div>
+      </div>
+
+    </div><!-- /input-panel -->
+
+    <!-- ══════════════════════════════════════
+         RESULT PANEL
+    ═══════════════════════════════════════ -->
+    <div class="result-panel" id="result-panel">
+
+      <!-- Summary -->
+      <div class="summary-card">
+        <div class="card-title">สรุปคะแนน</div>
+
+        <div class="gpa-display">
+          <div class="gpa-value" id="sum-gpa">-</div>
+          <div class="gpa-max">/ 4.0 <span class="gpa-grade" id="sum-grade-badge">-</span></div>
+        </div>
+
+        <div class="sum-row"><span>MCQ (63%)</span><span id="sum-mcq">-</span></div>
+        <div class="sum-row"><span>TSE (22%)</span><span id="sum-tse">-</span></div>
+        <div class="sum-row"><span>SDL (2%)</span><span id="sum-sdl">-</span></div>
+        <div class="sum-row"><span>Lab Dissection (10%)</span><span id="sum-dis">-</span></div>
+        <div class="sum-row"><span>Formative Assessment (2%)</span><span id="sum-fa">-</span></div>
+        <div class="sum-row"><span>Formative Orientation (1%)</span><span id="sum-fo">-</span></div>
+        <div class="sum-total">
+          <span>Raw Score</span>
+          <span id="sum-raw">0.0 / 400</span>
+        </div>
+      </div>
+
+      <!-- Grade Table -->
+      <div class="grade-table-card">
+        <div class="gtc-title">เกณฑ์การให้เกรด</div>
+        <table class="grade-table">
+          <thead>
+            <tr><th>เกรด</th><th>ช่วงคะแนน</th><th>ค่าระดับ</th></tr>
+          </thead>
+          <tbody id="grade-tbody">
+            <tr data-grade="A">  <td><span class="g-dot" style="background:#15803d"></span>A</td>  <td>350 – 400</td><td>4.0</td></tr>
+            <tr data-grade="B+"> <td><span class="g-dot" style="background:#22c55e"></span>B+</td> <td>300 – 349.9</td><td>3.5</td></tr>
+            <tr data-grade="B">  <td><span class="g-dot" style="background:#86efac"></span>B</td>  <td>250 – 299.9</td><td>3.0</td></tr>
+            <tr data-grade="C+"> <td><span class="g-dot" style="background:#ca8a04"></span>C+</td> <td>200 – 249.9</td><td>2.5</td></tr>
+            <tr data-grade="C">  <td><span class="g-dot" style="background:#facc15"></span>C</td>  <td>150 – 199.9</td><td>2.0</td></tr>
+            <tr data-grade="D+"> <td><span class="g-dot" style="background:#f87171"></span>D+</td> <td>100 – 149.9</td><td>1.5</td></tr>
+            <tr data-grade="D">  <td><span class="g-dot" style="background:#ef4444"></span>D</td>  <td>50 – 99.9</td><td>1.0</td></tr>
+            <tr data-grade="F">  <td><span class="g-dot" style="background:#b91c1c"></span>F</td>  <td>&lt; 50</td><td>0</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="reset-wrap">
+        <button class="reset-btn" id="reset-btn">รีเซ็ตทั้งหมด</button>
+      </div>
+
+    </div><!-- /result-panel -->
+
+  </div><!-- /app-wrapper -->
+</div><!-- /outer -->
+
+<script>
+// ===== GLOBALS =====
+var att = 'none';
+var _poll = {};  // last-known select values for iOS polling fallback
+
+// ===== HELPERS =====
+function selectValue(el) {
+  if (!el) return '';
+  if (el.value !== '') return el.value;
+  if (el.selectedIndex > -1 && el.options[el.selectedIndex]) {
+    return el.options[el.selectedIndex].value;
+  }
+  return '';
+}
+
+function selectState(el) {
+  return selectValue(el) + '|' + el.selectedIndex;
+}
+
+function gv(id) {
+  var el = document.getElementById(id);
+  if (!el) return null;
+  var v = parseFloat(selectValue(el));
+  return isNaN(v) ? null : v;
+}
+
+function getGrade(score) {
+  if (score >= 350) return 'A';
+  if (score >= 300) return 'B+';
+  if (score >= 250) return 'B';
+  if (score >= 200) return 'C+';
+  if (score >= 150) return 'C';
+  if (score >= 100) return 'D+';
+  if (score >= 50)  return 'D';
+  return 'F';
+}
+
+function progressColor(score) {
+  if (score < 150) return '#ef4444';
+  if (score < 250) return '#eab308';
+  if (score < 350) return '#22c55e';
+  return '#15803d';
+}
+
+function setText(id, val) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+// ===== DEVICE BADGE =====
+function updateDeviceBadge() {
+  var w = window.innerWidth;
+  var badge = document.getElementById('device-badge');
+  if (!badge) return;
+  if (w >= 1200) {
+    badge.textContent = 'PC';
+    badge.className = 'device-badge pc';
+  } else if (w >= 768) {
+    badge.textContent = 'iPad';
+    badge.className = 'device-badge ipad';
+  } else {
+    badge.textContent = 'iPhone';
+    badge.className = 'device-badge iphone';
+  }
+}
+
+// ===== ATTENDANCE TOGGLE =====
+function setAtt(val) {
+  att = val;
+  document.getElementById('btn-s').className = 'toggle-btn' + (val === 'S' ? ' s-on' : '');
+  document.getElementById('btn-u').className = 'toggle-btn' + (val === 'U' ? ' u-on' : '');
+  var note = document.getElementById('att-note');
+  if (val === 'S') {
+    note.textContent = 'ปกติ';
+    note.className = 'att-note s';
+  } else {
+    note.textContent = 'หัก 25% จาก Lab Dissection';
+    note.className = 'att-note u';
+  }
+  calculate();
+}
+
+// ===== MAIN CALCULATION =====
+function calculate() {
+  // MCQ
+  var mcqData = [
+    ['mcq1', 13.5], ['mcq2', 13.5],
+    ['mcq3', 12],   ['mcq4', 12],   ['mcq5', 12]
+  ];
+  var mcqTotal = 0, mcqFilled = false;
+  for (var i = 0; i < mcqData.length; i++) {
+    var g = gv(mcqData[i][0]);
+    if (g !== null) { mcqTotal += mcqData[i][1] * g; mcqFilled = true; }
+  }
+
+  // TSE
+  var tseData = [
+    ['tse1', 4.2], ['tse2', 4.2],
+    ['tse3', 4.2], ['tse4', 4.2], ['tse5', 5.2]
+  ];
+  var tseTotal = 0, tseFilled = false;
+  for (var j = 0; j < tseData.length; j++) {
+    var tg = gv(tseData[j][0]);
+    if (tg !== null) { tseTotal += tseData[j][1] * tg; tseFilled = true; }
+  }
+
+  // SDL
+  var sdlG = gv('sdl');
+  var sdlScore = sdlG !== null ? 2 * sdlG : null;
+
+  // Lab Dissection + U-attendance penalty
+  var disG = gv('lab-dis');
+  var disRaw = disG !== null ? 10 * disG : null;
+  var disFinal = disRaw;
+  var warn = document.getElementById('dis-warn');
+
+  if (att === 'U' && disRaw !== null) {
+    disFinal = disRaw * 0.75;
+    setText('dis-before', disRaw.toFixed(1));
+    setText('dis-after', ' ' + disFinal.toFixed(1));
+    if (warn) warn.className = 'dis-warn on';
+  } else {
+    if (warn) warn.className = 'dis-warn';
+  }
+
+  // Formative Assessment
+  var fa1s = gv('fa1-status'), fa1g = gv('fa1-grade');
+  var fa2s = gv('fa2-status'), fa2g = gv('fa2-grade');
+  var fa1 = (fa1s !== null && fa1g !== null) ? fa1s * fa1g : null;
+  var fa2 = (fa2s !== null && fa2g !== null) ? fa2s * fa2g : null;
+  var faFilled = (fa1 !== null || fa2 !== null);
+  var faTotal  = (fa1 !== null ? fa1 : 0) + (fa2 !== null ? fa2 : 0);
+
+  // Formative Orientation
+  var foG = gv('fo-grade');
+  var foScore = foG !== null ? foG : null;
+
+  // Grand total
+  var total =
+    mcqTotal + tseTotal +
+    (sdlScore  !== null ? sdlScore  : 0) +
+    (disFinal  !== null ? disFinal  : 0) +
+    faTotal +
+    (foScore   !== null ? foScore   : 0);
+
+  var gpa = (total / 400) * 4;
+
+  // Check if anything entered yet
+  var anyFilled = (att !== 'none');
+  if (!anyFilled) {
+    var allSel = document.querySelectorAll('select');
+    for (var k = 0; k < allSel.length; k++) {
+      if (selectValue(allSel[k]) !== '') { anyFilled = true; break; }
+    }
+  }
+
+  var grade      = anyFilled ? getGrade(total) : '-';
+  var gpaDisplay = anyFilled ? gpa.toFixed(2)  : '-';
+
+  // Update summary
+  function fmt(v) { return v === null ? '-' : v.toFixed(1); }
+  setText('sum-mcq', mcqFilled  ? mcqTotal.toFixed(1) : '-');
+  setText('sum-tse', tseFilled  ? tseTotal.toFixed(1) : '-');
+  setText('sum-sdl', fmt(sdlScore));
+  setText('sum-dis', disFinal  !== null ? disFinal.toFixed(1) : '-');
+  setText('sum-fa',  faFilled  ? faTotal.toFixed(1)  : '-');
+  setText('sum-fo',  fmt(foScore));
+  setText('sum-raw', total.toFixed(1) + ' / 400');
+  setText('sum-gpa', gpaDisplay);
+  setText('sum-grade-badge', grade);
+  setText('bar-gpa', gpaDisplay);
+  setText('bar-grade', grade);
+
+  // Progress bar
+  var pct  = anyFilled ? Math.min(100, (total / 400) * 100) : 0;
+  var fill = document.getElementById('progress-fill');
+  if (fill) {
+    fill.style.width      = pct + '%';
+    fill.style.background = progressColor(total);
+  }
+
+  // Highlight grade table row
+  var rows = document.querySelectorAll('#grade-tbody tr');
+  for (var r = 0; r < rows.length; r++) {
+    if (grade !== '-' && rows[r].getAttribute('data-grade') === grade) {
+      rows[r].className = 'hl';
+    } else {
+      rows[r].className = '';
+    }
+  }
+}
+
+// ===== RESET =====
+function resetAll() {
+  var allSel = document.querySelectorAll('select');
+  for (var i = 0; i < allSel.length; i++) {
+    allSel[i].selectedIndex = 0;
+    _poll[allSel[i].id] = selectState(allSel[i]);
+  }
+  att = 'none';
+  document.getElementById('btn-s').className = 'toggle-btn';
+  document.getElementById('btn-u').className = 'toggle-btn';
+  setText('att-note', '');
+  document.getElementById('att-note').className = 'att-note';
+  var warn = document.getElementById('dis-warn');
+  if (warn) warn.className = 'dis-warn';
+  calculate();
+}
+
+// ===== EVENT BINDING =====
+// Three-layer iOS coverage: change + input + blur
+var allSelects = document.querySelectorAll('select');
+for (var si = 0; si < allSelects.length; si++) {
+  allSelects[si].addEventListener('change', calculate);
+  allSelects[si].addEventListener('input',  calculate);
+  allSelects[si].addEventListener('blur',   calculate);
+  _poll[allSelects[si].id] = selectState(allSelects[si]);
+}
+
+// iOS supports click reliably on <button>
+document.getElementById('btn-s').addEventListener('click', function() { setAtt('S'); });
+document.getElementById('btn-u').addEventListener('click', function() { setAtt('U'); });
+document.getElementById('reset-btn').addEventListener('click', resetAll);
+
+// ===== POLLING FALLBACK (200ms) =====
+// Catches any iOS picker dismissals that slip through the event system
+setInterval(function() {
+  var changed = false;
+  var sels = document.querySelectorAll('select');
+  for (var pi = 0; pi < sels.length; pi++) {
+    var sid  = sels[pi].id;
+    var sval = selectState(sels[pi]);
+    if (_poll[sid] !== sval) { _poll[sid] = sval; changed = true; }
+  }
+  if (changed) calculate();
+}, 200);
+
+// ===== LAYOUT FIX =====
+// Syncs body padding-top and result-panel sticky top to real header height.
+// Accounts for dynamic font size, safe-area-inset-top (notch / Dynamic Island).
+function fixLayout() {
+  var hh = document.getElementById('header').offsetHeight;
+  document.body.style.paddingTop = hh + 'px';
+  var rp = document.getElementById('result-panel');
+  if (rp) rp.style.top = (hh + 16) + 'px';
+  updateDeviceBadge();
+}
+window.addEventListener('resize', fixLayout);
+fixLayout();
+
+// Initial render
+calculate();
+</script>
+</body>
+</html>
